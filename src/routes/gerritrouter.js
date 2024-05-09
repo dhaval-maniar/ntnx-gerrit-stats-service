@@ -1,9 +1,9 @@
 const { Router } = require('express');
 
-const { test } = require('../controllers/gerritcontroller');
+const { getMembersByGroupName } = require('../controllers/gerritcontroller');
 
 const app = Router();
 
-app.get('/members', test)
+app.get('/members', getMembersByGroupName)
 
 module.exports = app;
