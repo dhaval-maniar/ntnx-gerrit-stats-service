@@ -4,7 +4,7 @@ require('dotenv/config');
 const cors = require('cors')
 
 //Local Modules
-const gerritroute = require('./routes/gerritrouter');
+const membersRoute = require('./routes/membersRouter');
 
 //Server Initialization
 const app = express()
@@ -16,7 +16,7 @@ app.use(express.json())
 app.use(express.urlencoded({extended: false}))
 
 //Routes
-app.use('/api', gerritroute);
+app.use('/api/members', membersRoute);
 
 //Server Listen
 const server = app.listen(port, (err)=>{
