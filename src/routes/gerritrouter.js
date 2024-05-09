@@ -4,6 +4,6 @@ const { test } = require('../controllers/gerritcontroller');
 
 const app = Router();
 
-app.get('/', test)
+app.get('/members', test)
 
 module.exports = app;
