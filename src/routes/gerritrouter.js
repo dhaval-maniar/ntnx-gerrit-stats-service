@@ -1,9 +1,9 @@
 const { Router } = require('express');
 
+const { test } = require('../controllers/gerritcontroller');
+
 const app = Router();
 
-app.get('/', (req,res)=>{
-    res.send('Gerrit Router')
-})
+app.get('/', test)
 
 module.exports = app;
