@@ -5,6 +5,7 @@ const cors = require('cors')
 
 //Local Modules
 const membersRoute = require('./routes/membersRouter');
+const changesRoute = require('./routes/changesRouter');
 
 //Server Initialization
 const app = express()
@@ -17,6 +18,7 @@ app.use(express.urlencoded({extended: false}))
 
 //Routes
 app.use('/api/members', membersRoute);
+app.use('/api/changes', changesRoute);
 
 //Server Listen
 const server = app.listen(port, (err)=>{
