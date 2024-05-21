@@ -47,6 +47,38 @@ const codeReviews = (changes) => {
   return counts;
 }
 
+const getComments = async (changeId) => {
+  const url = baseURL + `/changes/${changeId}/comments`;
+  const response = await axios.get(url, {
+    httpsAgent: agent,
+    auth: {
+      username: username,
+      password: password
+    },
+    transformResponse: [(data) => {
+      return data.substring(data.indexOf('\n') + 1);
+    }]
+  })
+  const parsedData = JSON.parse(response.data);
+  return parsedData;
+}
+
+const totalCommentsRecieved = async (changes) => {
+  let commentPromises = changes.map(change => getComments(change.id));
+  let allComments = await Promise.all(commentPromises);
+
+  let counts = allComments.reduce((total, comments) => {
+    for (let key in comments) {
+      if (comments[key].length > 0) {
+        total += comments[key].length;
+      }
+    }
+    return total;
+  }, 0);
+
+  return counts;
+}
+
 const getChanges = async (owner) => {
   try {
     const response = await axios.get(baseURL + `/changes/?q=owner:${owner}&o=DETAILED_LABELS`, {
@@ -62,7 +94,8 @@ const getChanges = async (owner) => {
     const parsedData = JSON.parse(response.data);
     const oldest = await oldestChanges(parsedData);
     const reviews = await codeReviews(parsedData);
-    console.log(reviews);
+    const comments = await totalCommentsRecieved(parsedData);
+    console.log(comments);
     return parsedData;
   } catch (error) {
     console.log(error);
