@@ -32,6 +32,21 @@ const oldestChanges = async (changes) => {
   return oldest;
 }
 
+const codeReviews = (changes) => {
+  let counts = changes.reduce((acc, change) => {
+    let codeReviews = change.labels['Code-Review'].all;
+    return codeReviews.reduce((acc, item) => {
+      if (item.value === 1) acc.plusOnes++;
+      else if (item.value === -1) acc.minusOnes++;
+      else if (item.value === 2) acc.plusTwos++;
+      else if (item.value === -2) acc.minusTwos++;
+      return acc;
+    }, acc);
+  }, { plusOnes: 0, minusOnes: 0, plusTwos: 0, minusTwos: 0 });
+
+  return counts;
+}
+
 const getChanges = async (owner) => {
   try {
     const response = await axios.get(baseURL + `/changes/?q=owner:${owner}&o=DETAILED_LABELS`, {
@@ -46,7 +61,8 @@ const getChanges = async (owner) => {
     })
     const parsedData = JSON.parse(response.data);
     const oldest = await oldestChanges(parsedData);
-    console.log(oldest);
+    const reviews = await codeReviews(parsedData);
+    console.log(reviews);
     return parsedData;
   } catch (error) {
     console.log(error);
