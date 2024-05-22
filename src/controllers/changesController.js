@@ -1,4 +1,4 @@
-const { getChanges } = require('../utils/changesUtil');
+const { getChanges, getReviews } = require('../utils/changesUtil');
 
 const getChangesByOwner = async (req, res) => {
   const owner = req.params.extId;
@@ -13,4 +13,17 @@ const getChangesByOwner = async (req, res) => {
   }
 }
 
-module.exports = { getChangesByOwner }
+const getChangesByReviewer = async (req, res) => {
+  const reviewer = req.params.extId;
+  if(!reviewer) return res.status(400).send({ message: 'Reviewer Id is required' });
+  try {
+    const changes = await getReviews(reviewer);
+    if(!changes) return res.status(404).send({ message: 'Changes not found' });
+    res.status(200).send(changes);
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({ message: 'Internal Server Error' });
+  }
+}
+
+module.exports = { getChangesByOwner, getChangesByReviewer }

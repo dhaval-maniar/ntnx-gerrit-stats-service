@@ -1,5 +1,6 @@
 const axios = require('axios');
 const https = require('https');
+const moment = require('moment');
 require('dotenv/config');
 
 const baseURL = "https://gerrit.eng.nutanix.com";
@@ -47,6 +48,24 @@ const codeReviews = (changes) => {
   return counts;
 }
 
+const codeReviewed = async (changes, reviewerId) => {
+  let counts  = changes.reduce((acc,change)=> {
+    let codeReviews = change.labels['Code-Review'].all;
+    let reviewer = codeReviews.find((item) => {
+      return item._account_id == reviewerId
+    });
+    console.log(reviewer);
+    if(reviewer) {
+      if(reviewer.value === 1) acc.plusOnes++;
+      else if(reviewer.value === -1) acc.minusOnes++;
+      else if(reviewer.value === 2) acc.plusTwos++;
+      else if(reviewer.value === -2) acc.minusTwos++;
+    }
+    return acc;
+  }, { plusOnes: 0, minusOnes: 0, plusTwos: 0, minusTwos: 0 });
+  return counts;
+} 
+
 const getComments = async (changeId) => {
   const url = baseURL + `/changes/${changeId}/comments`;
   const response = await axios.get(url, {
@@ -80,8 +99,14 @@ const totalCommentsRecieved = async (changes) => {
 }
 
 const getChanges = async (owner) => {
+
+  let oneWeekAgo = moment().subtract(2, 'day').format('YYYY-MM-DD');
+  let today = moment().startOf('day').format('YYYY-MM-DD');
+
+  let query = `owner:${owner}+after:${oneWeekAgo}+before:${today}`
+
   try {
-    const response = await axios.get(baseURL + `/changes/?q=owner:${owner}&o=DETAILED_LABELS`, {
+    const response = await axios.get(baseURL + `/changes/?q=${query}&o=DETAILED_LABELS`, {
       httpsAgent: agent,
       auth: {
         username: username,
@@ -103,4 +128,32 @@ const getChanges = async (owner) => {
   }
 }
 
-module.exports = { getChanges }
+const getReviews = async (reviewer) => {
+  let oneWeekAgo = moment().subtract(1, 'weeks').format('YYYY-MM-DD');
+  let today = moment().startOf('day').format('YYYY-MM-DD');
+
+  let query = `reviewer:${reviewer}+after:${oneWeekAgo}+before:${today}`
+
+  try {
+    const response = await axios.get(baseURL + `/changes/?q=${query}&o=DETAILED_LABELS`, {
+      httpsAgent: agent,
+      auth: {
+        username: username,
+        password: password
+      },
+      transformResponse: [(data) => {
+        return data.substring(data.indexOf('\n') + 1);
+      }]
+    })
+    const parsedData = JSON.parse(response.data);
+    const reviews = await codeReviewed(parsedData, reviewer);
+    console.log(reviews);
+    return parsedData;
+  } catch (error) {
+    console.log(error);
+    return null;
+  }
+
+}
+
+module.exports = { getChanges, getReviews }
