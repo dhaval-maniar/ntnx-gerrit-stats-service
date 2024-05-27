@@ -31,4 +31,24 @@ const getMembers = async (groupName) => {
   }
 }
 
-module.exports = { getMembers }
+const getMember = async (name) => {
+  try {
+    const response = await axios.get(baseURL + `/a/accounts/?q=name: ${name}&o=DETAILS`, {
+      httpsAgent: agent,
+      auth: {
+        username: username,
+        password: password
+      },
+      transformResponse: [(data) => {
+        return data.substring(data.indexOf('\n') + 1);
+      }]
+    });
+    const parsedData = JSON.parse(response.data);
+    return parsedData;
+  } catch (error) {
+    console.log(error);
+    return null;
+  }
+}
+
+module.exports = { getMembers, getMember }

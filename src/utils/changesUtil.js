@@ -1,9 +1,10 @@
 const axios = require('axios');
 const https = require('https');
 const moment = require('moment');
+const { getMember } = require('./membersUtil');
 require('dotenv/config');
 
-const baseURL = "https://gerrit.eng.nutanix.com";
+const baseURL = "https://gerrit.eng.nutanix.com/a";
 const username = process.env.GERRIT_USERNAME;
 const password = process.env.GERRIT_PASSWORD;
 
@@ -54,7 +55,6 @@ const codeReviewed = async (changes, reviewerId) => {
     let reviewer = codeReviews.find((item) => {
       return item._account_id == reviewerId
     });
-    console.log(reviewer);
     if(reviewer) {
       if(reviewer.value === 1) acc.plusOnes++;
       else if(reviewer.value === -1) acc.minusOnes++;
@@ -100,7 +100,7 @@ const totalCommentsRecieved = async (changes) => {
 
 const getChanges = async (owner) => {
 
-  let oneWeekAgo = moment().subtract(2, 'day').format('YYYY-MM-DD');
+  let oneWeekAgo = moment().subtract(1, 'weeks').format('YYYY-MM-DD');
   let today = moment().startOf('day').format('YYYY-MM-DD');
 
   let query = `owner:${owner}+after:${oneWeekAgo}+before:${today}`
@@ -117,10 +117,6 @@ const getChanges = async (owner) => {
       }]
     })
     const parsedData = JSON.parse(response.data);
-    const oldest = await oldestChanges(parsedData);
-    const reviews = await codeReviews(parsedData);
-    const comments = await totalCommentsRecieved(parsedData);
-    console.log(comments);
     return parsedData;
   } catch (error) {
     console.log(error);
@@ -146,14 +142,33 @@ const getReviews = async (reviewer) => {
       }]
     })
     const parsedData = JSON.parse(response.data);
-    const reviews = await codeReviewed(parsedData, reviewer);
-    console.log(reviews);
     return parsedData;
   } catch (error) {
     console.log(error);
     return null;
   }
-
 }
 
-module.exports = { getChanges, getReviews }
+const getUserData = async (name) => {
+  const member = await getMember(name);
+  const userId = member[0]._account_id;
+  const ownChanges = await getChanges(userId);
+  const reviewChanges = await getReviews(userId);
+  const ownChangesCount = ownChanges.length;
+  const addedAsReviewer = reviewChanges.length;
+  const changes = await oldestChanges(ownChanges);
+  const reviews = await codeReviews(ownChanges);
+  const comments = await totalCommentsRecieved(ownChanges);
+  const reviewedChanges = await codeReviewed(reviewChanges, userId);
+  const result = {
+    ownChangesCount,
+    addedAsReviewer,
+    changes,
+    reviews,
+    comments,
+    reviewedChanges
+  }
+  return result;
+}
+
+module.exports = { getChanges, getReviews, getUserData }
