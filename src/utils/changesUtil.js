@@ -37,6 +37,10 @@ const oldestChanges = async (changes) => {
 const codeReviews = (changes) => {
   let counts = changes.reduce((acc, change) => {
     let codeReviews = change.labels['Code-Review'].all;
+    if(!codeReviews){
+      console.log(change);
+      return acc;
+    }
     return codeReviews.reduce((acc, item) => {
       if (item.value === 1) acc.plusOnes++;
       else if (item.value === -1) acc.minusOnes++;
@@ -156,14 +160,14 @@ const getUserData = async (name) => {
   const reviewChanges = await getReviews(userId);
   const ownChangesCount = ownChanges.length;
   const addedAsReviewer = reviewChanges.length;
-  const changes = await oldestChanges(ownChanges);
   const reviews = await codeReviews(ownChanges);
   const comments = await totalCommentsRecieved(ownChanges);
   const reviewedChanges = await codeReviewed(reviewChanges, userId);
   const result = {
+    userId,
+    name,
     ownChangesCount,
     addedAsReviewer,
-    changes,
     reviews,
     comments,
     reviewedChanges
