@@ -35,17 +35,27 @@ const oldestChanges = async (changes) => {
 }
 
 const codeReviews = (changes) => {
-  let counts = changes.reduce((acc, change) => {
-    let codeReviews = change.labels['Code-Review'].all;
-    if(!codeReviews){
-      console.log(change);
+  const counts = changes.reduce((acc, change) => {
+    const codeReviews = change.labels['Code-Review']?.all;
+    if (!codeReviews) {
       return acc;
     }
+
     return codeReviews.reduce((acc, item) => {
-      if (item.value === 1) acc.plusOnes++;
-      else if (item.value === -1) acc.minusOnes++;
-      else if (item.value === 2) acc.plusTwos++;
-      else if (item.value === -2) acc.minusTwos++;
+      switch (item.value) {
+        case 1:
+          acc.plusOnes++;
+          break;
+        case -1:
+          acc.minusOnes++;
+          break;
+        case 2:
+          acc.plusTwos++;
+          break;
+        case -2:
+          acc.minusTwos++;
+          break;
+      }
       return acc;
     }, acc);
   }, { plusOnes: 0, minusOnes: 0, plusTwos: 0, minusTwos: 0 });
@@ -54,21 +64,35 @@ const codeReviews = (changes) => {
 }
 
 const codeReviewed = async (changes, reviewerId) => {
-  let counts  = changes.reduce((acc,change)=> {
-    let codeReviews = change.labels['Code-Review'].all;
-    let reviewer = codeReviews.find((item) => {
-      return item._account_id == reviewerId
-    });
-    if(reviewer) {
-      if(reviewer.value === 1) acc.plusOnes++;
-      else if(reviewer.value === -1) acc.minusOnes++;
-      else if(reviewer.value === 2) acc.plusTwos++;
-      else if(reviewer.value === -2) acc.minusTwos++;
+  const counts = changes.reduce((acc, change) => {
+    const codeReviews = change.labels['Code-Review']?.all;
+    if (!codeReviews) {
+      return acc;
     }
+
+    const reviewer = codeReviews.find(item => item._account_id == reviewerId);
+    if (reviewer) {
+      switch (reviewer.value) {
+        case 1:
+          acc.plusOnes++;
+          break;
+        case -1:
+          acc.minusOnes++;
+          break;
+        case 2:
+          acc.plusTwos++;
+          break;
+        case -2:
+          acc.minusTwos++;
+          break;
+      }
+    }
+
     return acc;
   }, { plusOnes: 0, minusOnes: 0, plusTwos: 0, minusTwos: 0 });
+
   return counts;
-} 
+}
 
 const getComments = async (changeId) => {
   const url = baseURL + `/changes/${changeId}/comments`;
@@ -87,16 +111,11 @@ const getComments = async (changeId) => {
 }
 
 const totalCommentsRecieved = async (changes) => {
-  let commentPromises = changes.map(change => getComments(change.id));
-  let allComments = await Promise.all(commentPromises);
+  const allComments = await Promise.all(changes.map(change => getComments(change.id)));
 
-  let counts = allComments.reduce((total, comments) => {
-    for (let key in comments) {
-      if (comments[key].length > 0) {
-        total += comments[key].length;
-      }
-    }
-    return total;
+  const counts = allComments.reduce((total, comments) => {
+    const commentCount = Object.values(comments).flat().length;
+    return total + commentCount;
   }, 0);
 
   return counts;
@@ -156,13 +175,18 @@ const getReviews = async (reviewer) => {
 const getUserData = async (name) => {
   const member = await getMember(name);
   const userId = member[0]._account_id;
-  const ownChanges = await getChanges(userId);
-  const reviewChanges = await getReviews(userId);
+
+  const [ownChanges, reviewChanges] = await Promise.all([getChanges(userId), getReviews(userId)]);
+
   const ownChangesCount = ownChanges.length;
   const addedAsReviewer = reviewChanges.length;
-  const reviews = await codeReviews(ownChanges);
-  const comments = await totalCommentsRecieved(ownChanges);
-  const reviewedChanges = await codeReviewed(reviewChanges, userId);
+
+  const [reviews, comments, reviewedChanges] = await Promise.all([
+    codeReviews(ownChanges),
+    totalCommentsRecieved(ownChanges),
+    codeReviewed(reviewChanges, userId)
+  ]);
+
   const result = {
     userId,
     name,
@@ -172,6 +196,7 @@ const getUserData = async (name) => {
     comments,
     reviewedChanges
   }
+
   return result;
 }
 
