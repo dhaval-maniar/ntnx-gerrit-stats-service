@@ -1,10 +1,9 @@
 const axios = require('axios');
 const https = require('https');
 const moment = require('moment');
-const { getMember } = require('./membersUtil');
 require('dotenv/config');
 
-const baseURL = "https://gerrit.eng.nutanix.com/a";
+const baseURL = "https://gerrit.eng.nutanix.com";
 const username = process.env.GERRIT_USERNAME;
 const password = process.env.GERRIT_PASSWORD;
 
@@ -95,7 +94,7 @@ const codeReviewed = async (changes, reviewerId) => {
 }
 
 const getComments = async (changeId) => {
-  const url = baseURL + `/changes/${changeId}/comments`;
+  const url = baseURL + `/a/changes/${changeId}/comments`;
   const response = await axios.get(url, {
     httpsAgent: agent,
     auth: {
@@ -131,7 +130,7 @@ const getChanges = async (owner, startDate, endDate) => {
   let query = `owner:${owner}+after:${startDate}+before:${endDate}`
 
   try {
-    const response = await axios.get(baseURL + `/changes/?q=${query}&o=DETAILED_LABELS`, {
+    const response = await axios.get(baseURL + `/a/changes/?q=${query}&o=DETAILED_LABELS`, {
       httpsAgent: agent,
       auth: {
         username: username,
@@ -159,7 +158,7 @@ const getReviews = async (reviewer, startDate, endDate) => {
   let query = `reviewer:${reviewer}+after:${startDate}+before:${endDate}`
 
   try {
-    const response = await axios.get(baseURL + `/changes/?q=${query}&o=DETAILED_LABELS`, {
+    const response = await axios.get(baseURL + `/a/changes/?q=${query}&o=DETAILED_LABELS`, {
       httpsAgent: agent,
       auth: {
         username: username,
@@ -177,18 +176,48 @@ const getReviews = async (reviewer, startDate, endDate) => {
   }
 }
 
+const getOpenChanges = async (owner, startDate, endDate) => {
+
+  let query = `owner:${owner}+status:open`
+
+  try {
+    const response = await axios.get(baseURL + `/a/changes/?q=${query}&o=DETAILED_LABELS`, {
+      httpsAgent: agent,
+      auth: {
+        username: username,
+        password: password
+      },
+      transformResponse: [(data) => {
+        return data.substring(data.indexOf('\n') + 1);
+      }]
+    });
+    const parsedData = JSON.parse(response.data);
+    return parsedData;
+  } catch (error) {
+    console.log(error);
+    return null;
+  }
+}
+
 const getUserData = async (id, startDate, endDate) => {
   const userId = id;
 
-  const [ownChanges, reviewChanges] = await Promise.all([getChanges(userId,startDate,endDate), getReviews(userId,startDate,endDate)]);
+  const [ownChanges, reviewChanges, openChanges] = await Promise.all(
+    [
+      getChanges(userId,startDate,endDate), 
+      getReviews(userId,startDate,endDate), 
+      getOpenChanges(userId,startDate,endDate)
+    ]
+  );
 
   const ownChangesCount = ownChanges.length;
   const addedAsReviewer = reviewChanges.length;
 
-  const [reviews, comments, reviewedChanges] = await Promise.all([
+  const [reviews, comments, reviewedChanges, oldestOpenChanges] = await Promise.all([
     codeReviews(ownChanges),
     totalCommentsRecieved(ownChanges),
-    codeReviewed(reviewChanges, userId)
+    codeReviewed(reviewChanges, userId),
+    oldestChanges(openChanges)
   ]);
 
   const result = {
@@ -197,7 +226,8 @@ const getUserData = async (id, startDate, endDate) => {
     addedAsReviewer,
     reviews,
     comments,
-    reviewedChanges
+    reviewedChanges,
+    oldestOpenChanges,
   }
 
   return result;
