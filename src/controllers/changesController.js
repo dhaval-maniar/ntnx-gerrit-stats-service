@@ -28,9 +28,11 @@ const getChangesByReviewer = async (req, res) => {
 
 const getUserChanges = async (req, res) => {
   const userId = req.params.extId;
+  const startDate = req.query.startDate;
+  const endDate = req.query.endDate;
   if(!userId) return res.status(400).send({ message: 'User Id is required' });
   try {
-    const changes = await getUserData(userId);
+    const changes = await getUserData(userId, startDate, endDate);
     if(!changes) return res.status(404).send({ message: 'Changes not found' });
     res.status(200).send(changes);
   } catch (error) {

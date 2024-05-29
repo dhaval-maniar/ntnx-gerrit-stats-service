@@ -121,12 +121,14 @@ const totalCommentsRecieved = async (changes) => {
   return counts;
 }
 
-const getChanges = async (owner) => {
+const getChanges = async (owner, startDate, endDate) => {
 
   let oneWeekAgo = moment().subtract(1, 'weeks').format('YYYY-MM-DD');
+  startDate = startDate ? startDate : oneWeekAgo;
   let today = moment().startOf('day').format('YYYY-MM-DD');
+  endDate = endDate ? endDate : today;
 
-  let query = `owner:${owner}+after:${oneWeekAgo}+before:${today}`
+  let query = `owner:${owner}+after:${startDate}+before:${endDate}`
 
   try {
     const response = await axios.get(baseURL + `/changes/?q=${query}&o=DETAILED_LABELS`, {
@@ -147,11 +149,14 @@ const getChanges = async (owner) => {
   }
 }
 
-const getReviews = async (reviewer) => {
+const getReviews = async (reviewer, startDate, endDate) => {
+  
   let oneWeekAgo = moment().subtract(1, 'weeks').format('YYYY-MM-DD');
+  startDate = startDate ? startDate: oneWeekAgo;
   let today = moment().startOf('day').format('YYYY-MM-DD');
+  endDate = endDate ? endDate : today;
 
-  let query = `reviewer:${reviewer}+after:${oneWeekAgo}+before:${today}`
+  let query = `reviewer:${reviewer}+after:${startDate}+before:${endDate}`
 
   try {
     const response = await axios.get(baseURL + `/changes/?q=${query}&o=DETAILED_LABELS`, {
@@ -172,10 +177,10 @@ const getReviews = async (reviewer) => {
   }
 }
 
-const getUserData = async (id) => {
+const getUserData = async (id, startDate, endDate) => {
   const userId = id;
 
-  const [ownChanges, reviewChanges] = await Promise.all([getChanges(userId), getReviews(userId)]);
+  const [ownChanges, reviewChanges] = await Promise.all([getChanges(userId,startDate,endDate), getReviews(userId,startDate,endDate)]);
 
   const ownChangesCount = ownChanges.length;
   const addedAsReviewer = reviewChanges.length;
