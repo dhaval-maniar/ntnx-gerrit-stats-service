@@ -172,9 +172,8 @@ const getReviews = async (reviewer) => {
   }
 }
 
-const getUserData = async (name) => {
-  const member = await getMember(name);
-  const userId = member[0]._account_id;
+const getUserData = async (id) => {
+  const userId = id;
 
   const [ownChanges, reviewChanges] = await Promise.all([getChanges(userId), getReviews(userId)]);
 
@@ -189,7 +188,6 @@ const getUserData = async (name) => {
 
   const result = {
     userId,
-    name,
     ownChangesCount,
     addedAsReviewer,
     reviews,
