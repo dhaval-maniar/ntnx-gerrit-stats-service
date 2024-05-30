@@ -63,7 +63,7 @@ const codeReviews = (changes) => {
 }
 
 const codeReviewed = async (changes, reviewerId) => {
-  const counts = changes.reduce((acc, change) => {
+  const result = changes.reduce((acc, change) => {
     const codeReviews = change.labels['Code-Review']?.all;
     if (!codeReviews) {
       return acc;
@@ -71,26 +71,37 @@ const codeReviewed = async (changes, reviewerId) => {
 
     const reviewer = codeReviews.find(item => item._account_id == reviewerId);
     if (reviewer) {
+      if(reviewer.value){
+        const date = new Date(reviewer.date);
+        const day = date.getDay();
+        if (acc.reviewsByday[day]) {
+          acc.reviewsByday[day]++;
+        } else {
+          acc.reviewsByday[day] = 1;
+        }
+      }
       switch (reviewer.value) {
         case 1:
-          acc.plusOnes++;
+          acc.counts.plusOnes++;
           break;
         case -1:
-          acc.minusOnes++;
+          acc.counts.minusOnes++;
           break;
         case 2:
-          acc.plusTwos++;
+          acc.counts.plusTwos++;
           break;
         case -2:
-          acc.minusTwos++;
+          acc.counts.minusTwos++;
           break;
       }
     }
-
     return acc;
-  }, { plusOnes: 0, minusOnes: 0, plusTwos: 0, minusTwos: 0 });
+  }, {
+    counts :{ plusOnes: 0, minusOnes: 0, plusTwos: 0, minusTwos: 0 },
+    reviewsByday: {}
+  });
 
-  return counts;
+  return result;
 }
 
 const getComments = async (changeId) => {
@@ -176,7 +187,7 @@ const getReviews = async (reviewer, startDate, endDate) => {
   }
 }
 
-const getOpenChanges = async (owner, startDate, endDate) => {
+const getOpenChanges = async (owner) => {
 
   let query = `owner:${owner}+status:open`
 
@@ -220,6 +231,8 @@ const getUserData = async (id, startDate, endDate) => {
     oldestChanges(openChanges)
   ]);
 
+  const commentsPerChange = comments / (ownChangesCount ? ownChangesCount : 1);
+
   const result = {
     userId,
     ownChangesCount,
@@ -228,6 +241,7 @@ const getUserData = async (id, startDate, endDate) => {
     comments,
     reviewedChanges,
     oldestOpenChanges,
+    commentsPerChange
   }
 
   return result;
