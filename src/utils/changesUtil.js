@@ -11,7 +11,7 @@ const agent = new https.Agent({
   rejectUnauthorized: false
 });
 
-const oldestChanges = async (changes) => {
+const oldestChanges = (changes) => {
   let oldest = changes.map((item) => {
     return {
       id: item.change_id,
@@ -62,7 +62,7 @@ const codeReviews = (changes) => {
   return counts;
 }
 
-const codeReviewed = async (changes, reviewerId) => {
+const codeReviewed = (changes, reviewerId) => {
   const result = changes.reduce((acc, change) => {
     const codeReviews = change.labels['Code-Review']?.all;
     if (!codeReviews) {
@@ -140,6 +140,47 @@ const totalCommentsRecieved = async (changes) => {
   }, 0);
 
   return { total: counts, maxComment: { id:maxCommentsId, count: maxComments, url: maxCommentsUrl }};
+}
+
+const formatTime = (time) => {
+  let seconds = Math.floor(time / 1000);
+  let minutes = Math.floor(seconds / 60);
+  let hours = Math.floor(minutes / 60);
+  let days = Math.floor(hours / 24);
+
+  seconds = seconds % 60;
+  minutes = minutes % 60;
+  hours = hours % 24;
+
+  return `${days} days, ${hours} hours, ${minutes} minutes, ${seconds} seconds`;
+};
+
+const getLongestandShortestChange = (changes) => {
+  let longest = changes[0];
+  let ltime = null;
+  let shortest = changes[0];
+  let stime = null;
+
+  changes.forEach(change => {
+    if(change.status === "MERGED"){
+      let submitted = new Date(change.submitted);
+      let created = new Date(change.created); 
+      let time = submitted - created;
+      if(ltime === null || time > ltime){
+        ltime = time;
+        longest = change;
+      }
+      if(stime === null || time < stime){
+        stime = time;
+        shortest = change;
+      }
+    }
+  })
+
+  let lurl = baseURL + `/c/${longest?.project}/+/${longest?._number}`
+  let surl = baseURL + `/c/${shortest?.project}/+/${shortest?._number}`
+
+  return {longest: {id: longest?.change_id,url: lurl, time: formatTime(ltime)}, shortest: {id: shortest?.change_id,url: surl, time: formatTime(stime)}};
 }
 
 const getChanges = async (owner, startDate, endDate) => {
@@ -235,11 +276,12 @@ const getUserData = async (id, startDate, endDate) => {
   const ownChangesCount = ownChanges.length;
   const addedAsReviewer = reviewChanges.length;
 
-  const [reviews, comments, reviewedChanges, oldestOpenChanges] = await Promise.all([
+  const [reviews, comments, reviewedChanges, oldestOpenChanges, longestAndShortest] = await Promise.all([
     codeReviews(ownChanges),
     totalCommentsRecieved(ownChanges),
     codeReviewed(reviewChanges, userId),
-    oldestChanges(openChanges)
+    oldestChanges(openChanges),
+    getLongestandShortestChange(ownChanges)
   ]);
 
   const totalComments = comments.total;
@@ -256,7 +298,8 @@ const getUserData = async (id, startDate, endDate) => {
     maxComments,
     reviewedChanges,
     oldestOpenChanges,
-    commentsPerChange
+    commentsPerChange,
+    longestAndShortest
   }
 
   return result;
