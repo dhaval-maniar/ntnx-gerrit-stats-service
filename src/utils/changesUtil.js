@@ -104,8 +104,8 @@ const codeReviewed = async (changes, reviewerId) => {
   return result;
 }
 
-const getComments = async (changeId) => {
-  const url = baseURL + `/a/changes/${changeId}/comments`;
+const getComments = async (change) => {
+  const url = baseURL + `/a/changes/${change.id}/comments`;
   const response = await axios.get(url, {
     httpsAgent: agent,
     auth: {
@@ -117,18 +117,29 @@ const getComments = async (changeId) => {
     }]
   })
   const parsedData = JSON.parse(response.data);
-  return parsedData;
+  return {change, comments: parsedData};
 }
 
 const totalCommentsRecieved = async (changes) => {
-  const allComments = await Promise.all(changes.map(change => getComments(change.id)));
+  let maxComments = 0;
+  let maxCommentsUrl = '';
+  let maxCommentsId = '';
 
-  const counts = allComments.reduce((total, comments) => {
+  const allComments = await Promise.all(changes.map(change => getComments(change)));
+
+  const counts = allComments.reduce((total, {change, comments}) => {
     const commentCount = Object.values(comments).flat().length;
+
+    if (commentCount > maxComments) {
+      maxComments = commentCount;
+      maxCommentsUrl = baseURL + `/c/${change.project}/+/${change._number}`;
+      maxCommentsId = change.change_id;
+    }
+
     return total + commentCount;
   }, 0);
 
-  return counts;
+  return { total: counts, maxComment: { id:maxCommentsId, count: maxComments, url: maxCommentsUrl }};
 }
 
 const getChanges = async (owner, startDate, endDate) => {
@@ -231,14 +242,18 @@ const getUserData = async (id, startDate, endDate) => {
     oldestChanges(openChanges)
   ]);
 
-  const commentsPerChange = comments / (ownChangesCount ? ownChangesCount : 1);
+  const totalComments = comments.total;
+  const maxComments = comments.maxComment;
+
+  const commentsPerChange = totalComments / (ownChangesCount ? ownChangesCount : 1);
 
   const result = {
     userId,
     ownChangesCount,
     addedAsReviewer,
     reviews,
-    comments,
+    comments: totalComments,
+    maxComments,
     reviewedChanges,
     oldestOpenChanges,
     commentsPerChange
