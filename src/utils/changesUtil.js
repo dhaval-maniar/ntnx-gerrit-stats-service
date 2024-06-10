@@ -82,22 +82,37 @@ const codeReviewed = (changes, reviewerId) => {
       }
       switch (reviewer.value) {
         case 1:
-          acc.counts.plusOnes++;
+          acc.plusOnes.push({
+            id: change.change_id,
+            url: baseURL + `/c/${change.project}/+/${change._number}`,
+          });
           break;
         case -1:
-          acc.counts.minusOnes++;
+          acc.minusOnes.push({
+            id: change.change_id,
+            url: baseURL + `/c/${change.project}/+/${change._number}`,
+          });
           break;
         case 2:
-          acc.counts.plusTwos++;
+          acc.plusTwos.push({
+            id: change.change_id,
+            url: baseURL + `/c/${change.project}/+/${change._number}`,
+          });
           break;
         case -2:
-          acc.counts.minusTwos++;
+          acc.minusTwos.push({
+            id: change.change_id,
+            url: baseURL + `/c/${change.project}/+/${change._number}`,
+          });
           break;
       }
     }
     return acc;
   }, {
-    counts :{ plusOnes: 0, minusOnes: 0, plusTwos: 0, minusTwos: 0 },
+    plusOnes: [],
+    plusTwos: [],
+    minusOnes: [],
+    minusTwos: [],
     reviewsByday: {}
   });
 
