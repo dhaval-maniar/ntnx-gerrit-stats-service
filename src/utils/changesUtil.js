@@ -148,20 +148,11 @@ const getComments = async (change) => {
 }
 
 const totalCommentsRecieved = async (changes) => {
-  let maxComments = 0;
-  let maxCommentsUrl = '';
-  let maxCommentsId = '';
 
   const allComments = await Promise.all(changes.map(change => getComments(change)));
 
   const counts = allComments.reduce((acc, {change, comments}) => {
     const commentCount = Object.values(comments).flat().length;
-
-    if (commentCount > maxComments) {
-      maxComments = commentCount;
-      maxCommentsUrl = baseURL + `/c/${change.project}/+/${change._number}`;
-      maxCommentsId = change.change_id;
-    }
 
     if(Object.keys(comments).length > 0){
       acc.changes.push({
@@ -178,7 +169,26 @@ const totalCommentsRecieved = async (changes) => {
     comments: 0,
   });
 
-  return { total: counts.comments, changes:counts.changes, maxComment: { id:maxCommentsId, count: maxComments, url: maxCommentsUrl }};
+  return { total: counts.comments, changes:counts.changes};
+}
+
+const maxCommentsCR = async (changes) => {
+  const allComments = await Promise.all(changes.map(change => getComments(change)));
+
+  const maxComment = allComments.reduce((acc, {change, comments}) => {
+    const commentCount = Object.values(comments).flat().length;
+
+    if (commentCount > acc.count) {
+      return {
+        count: commentCount,
+        url: baseURL + `/c/${change.project}/+/${change._number}`,
+        id: change.change_id,
+      };
+    }
+    return acc;
+  }, { count: 0, url: '', id: '' });
+
+  return maxComment;
 }
 
 const formatTime = (time) => {
@@ -306,8 +316,8 @@ const getUserStats = async (id, startDate, endDate) => {
 
   const [ownChanges, reviewChanges] = await Promise.all(
     [
-      getChanges(userId,startDate,endDate), 
-      getReviews(userId,startDate,endDate)
+      getChanges(userId,startDate,endDate).catch(error => { console.log(error); return []; }), 
+      getReviews(userId,startDate,endDate).catch(error => { console.log(error); return []; })
     ]
   );
 
@@ -315,16 +325,13 @@ const getUserStats = async (id, startDate, endDate) => {
   const addedAsReviewer = reviewChanges.length;
 
   const [reviews, comments, reviewedChanges] = await Promise.all([
-    codeReviews(ownChanges),
-    totalCommentsRecieved(ownChanges),
-    codeReviewed(reviewChanges, userId)
+    codeReviews(ownChanges).catch(error => { console.log(error); return {}; }),
+    totalCommentsRecieved(ownChanges).catch(error => { console.log(error); return { total: 0, changes: 0 }; }),
+    codeReviewed(reviewChanges, userId).catch(error => { console.log(error); return []; })
   ]);
 
   const totalComments = comments.total;
-  const maxComments = comments.maxComment;
   const changes = comments.changes;
-
-  const commentsPerChange = totalComments / (ownChangesCount ? ownChangesCount : 1);
 
   const result = {
     userId,
@@ -332,9 +339,7 @@ const getUserStats = async (id, startDate, endDate) => {
     addedAsReviewer,
     reviews,
     comments: {total: totalComments, changes},
-    maxComments,
     reviewedChanges,
-    commentsPerChange,
   }
 
   return result;
