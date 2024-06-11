@@ -301,6 +301,45 @@ const getOpenChanges = async (owner) => {
   }
 }
 
+const getUserStats = async (id, startDate, endDate) => {
+  const userId = id;
+
+  const [ownChanges, reviewChanges] = await Promise.all(
+    [
+      getChanges(userId,startDate,endDate), 
+      getReviews(userId,startDate,endDate)
+    ]
+  );
+
+  const ownChangesCount = ownChanges.length;
+  const addedAsReviewer = reviewChanges.length;
+
+  const [reviews, comments, reviewedChanges] = await Promise.all([
+    codeReviews(ownChanges),
+    totalCommentsRecieved(ownChanges),
+    codeReviewed(reviewChanges, userId)
+  ]);
+
+  const totalComments = comments.total;
+  const maxComments = comments.maxComment;
+  const changes = comments.changes;
+
+  const commentsPerChange = totalComments / (ownChangesCount ? ownChangesCount : 1);
+
+  const result = {
+    userId,
+    ownChangesCount,
+    addedAsReviewer,
+    reviews,
+    comments: {total: totalComments, changes},
+    maxComments,
+    reviewedChanges,
+    commentsPerChange,
+  }
+
+  return result;
+}
+
 const getUserData = async (id, startDate, endDate) => {
   const userId = id;
 
@@ -345,4 +384,4 @@ const getUserData = async (id, startDate, endDate) => {
   return result;
 }
 
-module.exports = { getChanges, getReviews, getUserData }
+module.exports = { getChanges, getReviews, getUserData, getUserStats }
