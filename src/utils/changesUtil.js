@@ -83,15 +83,6 @@ const codeReviewed = (changes, reviewerId) => {
 
     const reviewer = codeReviews.find(item => item._account_id == reviewerId);
     if (reviewer) {
-      if(reviewer.value){
-        const date = new Date(reviewer.date);
-        const day = date.getDay();
-        if (acc.reviewsByday[day]) {
-          acc.reviewsByday[day]++;
-        } else {
-          acc.reviewsByday[day] = 1;
-        }
-      }
       switch (reviewer.value) {
         case 1:
           acc.plusOnes.push({
@@ -124,7 +115,35 @@ const codeReviewed = (changes, reviewerId) => {
     plusOnes: [],
     plusTwos: [],
     minusOnes: [],
-    minusTwos: [],
+    minusTwos: []
+  });
+
+  return result;
+}
+
+const reviewsByFilter = async (changes, reviewerId, type = "DAY") => {
+  const result = changes.reduce((acc, change) => {
+    const codeReviews = change.labels['Code-Review']?.all;
+    if (!codeReviews) {
+      return acc;
+    }
+
+    const reviewer = codeReviews.find(item => item._account_id == reviewerId);
+    if (reviewer) {
+      if(reviewer.value){
+        if(type === "DAY"){
+          const date = new Date(reviewer.date);
+          const day = date.getDay();
+          if (acc.reviewsByday[day]) {
+            acc.reviewsByday[day]++;
+          } else {
+            acc.reviewsByday[day] = 1;
+          }
+        }
+      }
+    }
+    return acc;
+  }, {
     reviewsByday: {}
   });
 
@@ -152,7 +171,14 @@ const totalCommentsRecieved = async (changes) => {
   const allComments = await Promise.all(changes.map(change => getComments(change)));
 
   const counts = allComments.reduce((acc, {change, comments}) => {
-    const commentCount = Object.values(comments).flat().length;
+    let commentCount = 0;
+    const key = "in_reply_to"
+
+    for (const [comment] of Object.entries(comments)) {
+      if (comment && typeof comment === 'object') {
+        commentCount += Object.values(comment).some(innerObject => innerObject.hasOwnProperty(key)) ? 1 : 0;
+      }
+    }
 
     if(Object.keys(comments).length > 0){
       acc.changes.push({
@@ -316,8 +342,8 @@ const getUserStats = async (id, startDate, endDate) => {
 
   const [ownChanges, reviewChanges] = await Promise.all(
     [
-      getChanges(userId,startDate,endDate).catch(error => { console.log(error); return []; }), 
-      getReviews(userId,startDate,endDate).catch(error => { console.log(error); return []; })
+      getChanges(userId,startDate,endDate),
+      getReviews(userId,startDate,endDate)
     ]
   );
 
@@ -325,15 +351,15 @@ const getUserStats = async (id, startDate, endDate) => {
   const addedAsReviewer = reviewChanges.length;
 
   const [reviews, comments, reviewedChanges] = await Promise.all([
-    codeReviews(ownChanges).catch(error => { console.log(error); return {}; }),
-    totalCommentsRecieved(ownChanges).catch(error => { console.log(error); return { total: 0, changes: 0 }; }),
-    codeReviewed(reviewChanges, userId).catch(error => { console.log(error); return []; })
+    codeReviews(ownChanges),
+    totalCommentsRecieved(ownChanges),
+    codeReviewed(reviewChanges, userId)
   ]);
 
   const totalComments = comments.total;
   const changes = comments.changes;
 
-  const result = {
+  return {
     userId,
     ownChangesCount,
     addedAsReviewer,
@@ -341,8 +367,27 @@ const getUserStats = async (id, startDate, endDate) => {
     comments: {total: totalComments, changes},
     reviewedChanges,
   }
+}
 
-  return result;
+const getCrStats = async (id, startDate, endDate) => {
+  const userId = id;
+
+  const [ownChanges] = await Promise.all(
+    [
+      getChanges(userId,startDate,endDate)
+    ]
+  );
+
+  const [maxComments, longestAndShortest] = await Promise.all([
+    maxCommentsCR(ownChanges),
+    getLongestandShortestChange(ownChanges)
+  ]);
+
+  return {
+    userId, 
+    maxComments,
+    longestAndShortest
+  }  
 }
 
 const getUserData = async (id, startDate, endDate) => {
@@ -389,4 +434,4 @@ const getUserData = async (id, startDate, endDate) => {
   return result;
 }
 
-module.exports = { getChanges, getReviews, getUserData, getUserStats }
+module.exports = { getChanges, getReviews, getUserData, getUserStats, getCrStats }
