@@ -174,9 +174,9 @@ const totalCommentsRecieved = async (changes) => {
     let commentCount = 0;
     const key = "in_reply_to"
 
-    for (const [comment] of Object.entries(comments)) {
-      if (comment && typeof comment === 'object') {
-        commentCount += Object.values(comment).some(innerObject => innerObject.hasOwnProperty(key)) ? 1 : 0;
+    for (const [_, commentArray] of Object.entries(comments)) {
+      if (Array.isArray(commentArray)) {
+        commentCount += commentArray.filter(comment => !comment.hasOwnProperty(key)).length;
       }
     }
 
