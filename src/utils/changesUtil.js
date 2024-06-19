@@ -390,6 +390,13 @@ const getCrStats = async (id, startDate, endDate) => {
   }  
 }
 
+const getOpenCrs = async (id) => {
+  const openChanges = await getOpenChanges(id);
+  const oldestOpenChanges = oldestChanges(openChanges);
+
+  return oldestOpenChanges;
+}
+
 const getUserData = async (id, startDate, endDate) => {
   const userId = id;
 
@@ -434,4 +441,4 @@ const getUserData = async (id, startDate, endDate) => {
   return result;
 }
 
-module.exports = { getChanges, getReviews, getUserData, getUserStats, getCrStats }
+module.exports = { getChanges, getReviews, getUserData, getUserStats, getCrStats, getOpenCrs }
