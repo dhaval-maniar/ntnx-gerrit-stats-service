@@ -1,6 +1,6 @@
 const { Router } = require('express');
 
-const { getChangesByOwner, getChangesByReviewer, getUserChanges, getUserStatistics, getCrStatistics, getOpenChanges } = require('../controllers/changesController');
+const { getChangesByOwner, getChangesByReviewer, getUserChanges, getUserStatistics, getCrStatistics, getOpenChanges, getReviewsByFilter } = require('../controllers/changesController');
 
 const app = Router();
 
@@ -15,5 +15,7 @@ app.get('/stats/:extId', getUserStatistics);
 app.get('/crStats/:extId', getCrStatistics);
 
 app.get('/openChanges/:extId', getOpenChanges);
+
+app.get('/graphStats/:extId', getReviewsByFilter);
 
 module.exports = app;
