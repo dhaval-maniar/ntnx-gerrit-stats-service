@@ -121,6 +121,31 @@ const codeReviewed = (changes, reviewerId) => {
   return result;
 }
 
+const pendingReview = (changes, reviewerId) => {
+  const result = changes.reduce((acc, change) => {
+    const codeReviews = change.labels['Code-Review']?.all;
+    if (!codeReviews) {
+      return acc;
+    }
+
+    const reviewer = codeReviews.find(item => item._account_id == reviewerId);
+    if (reviewer) {
+      if(!reviewer.value){
+        acc.pending.push({
+          id: change.change_id,
+          name: change.subject,
+          url: baseURL + `/c/${change.project}/+/${change._number}`,
+        });
+      }
+    }
+    return acc;
+  }, {
+    pending: []
+  });
+
+  return result;
+}
+
 const reviewsByFilter = async (changes, reviewerId, type = "DAY") => {
   const result = changes.reduce((acc, change) => {
     const codeReviews = change.labels['Code-Review']?.all;
@@ -405,6 +430,14 @@ const getGraphStats = async (id, startDate, endDate) => {
   return getReviewsByDay;
 }
 
+const getPending = async (id, startDate, endDate) => {
+  const reviewChanges = await getReviews(id, startDate, endDate);
+
+  const pending = await pendingReview(reviewChanges, id); 
+
+  return pending;
+}
+
 const getUserData = async (id, startDate, endDate) => {
   const userId = id;
 
@@ -449,4 +482,4 @@ const getUserData = async (id, startDate, endDate) => {
   return result;
 }
 
-module.exports = { getChanges, getReviews, getUserData, getUserStats, getCrStats, getOpenCrs, getGraphStats }
+module.exports = { getChanges, getReviews, getUserData, getUserStats, getCrStats, getOpenCrs, getGraphStats, getPending }

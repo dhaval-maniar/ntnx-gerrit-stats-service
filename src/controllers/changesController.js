@@ -1,4 +1,4 @@
-const { getChanges, getReviews, getUserData, getUserStats, getCrStats, getOpenCrs, getGraphStats } = require('../utils/changesUtil');
+const { getChanges, getReviews, getUserData, getUserStats, getCrStats, getOpenCrs, getGraphStats, getPending } = require('../utils/changesUtil');
 
 const getChangesByOwner = async (req, res) => {
   const owner = req.params.extId;
@@ -104,4 +104,20 @@ const getReviewsByFilter = async (req, res) => {
 
 }
 
-module.exports = { getChangesByOwner, getChangesByReviewer, getUserChanges, getUserStatistics, getCrStatistics, getOpenChanges, getReviewsByFilter }
+const getPendingReviews = async (req, res) => {
+  const userId = req.params.extId;
+  const startDate = req.query.startDate;
+  const endDate = req.query.endDate;
+  if(!userId) return res.status(400).send({ message: 'User Id is required' });
+  try {
+    const changes = await getPending(userId, startDate, endDate);
+    if(!changes) return res.status(404).send({ message: 'Changes not found' });
+    res.status(200).send(changes);
+  } catch (error) {
+    console.log(error);
+    res.status(500).send({ message: 'Internal Server Error' });
+  }
+
+}
+
+module.exports = { getChangesByOwner, getChangesByReviewer, getUserChanges, getUserStatistics, getCrStatistics, getOpenChanges, getReviewsByFilter, getPendingReviews }
